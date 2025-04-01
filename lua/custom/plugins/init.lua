@@ -55,46 +55,6 @@ return {
         dap.terminate()
       end, {})
     end,
-    config = function()
-      local dap = require 'dap'
-
-      -- Java Debug adapter configuration
-      dap.adapters.java = function(callback, config)
-        callback {
-          type = 'server',
-          host = '127.0.0.1',
-          port = tonumber(config.port),
-        }
-      end
-
-      -- Java debug configurations
-      dap.configurations.java = {
-        {
-          type = 'java',
-          request = 'attach',
-          name = 'Debug (Attach) - Remote',
-          host = '127.0.0.1',
-          port = 5005,
-        },
-        -- {
-        --   type = 'java',
-        --   request = 'attach',
-        --   name = 'Debug (Attach) - Remote',
-        --   hostName = 'localhost',
-        --   port = function()
-        --     local port = vim.fn.input('Debug Port: ', '5005')
-        --     return tonumber(port)
-        --   end,
-        -- },
-        {
-          type = 'java',
-          request = 'launch',
-          name = 'Debug Spring Boot Application',
-          mainClass = '${file}',
-          projectName = '${workspaceFolder}',
-        },
-      }
-    end,
   },
   {
     'yetone/avante.nvim',
