@@ -7,19 +7,25 @@ local status, jdtls = pcall(require, 'jdtls')
 if not status then
   return
 end
+
+-- Get the current extendedClientCapabilities
 local extendedClientCapabilities = jdtls.extendedClientCapabilities
 
--- Prepare the debugger configuration
-local bundles = {}
-local jdtls_dap_status, jdtls_dap = pcall(require, 'jdtls.dap')
-if jdtls_dap_status then
-  local java_debug_path = vim.fn.glob(home .. '/.local/share/nvim/mason/packages/java-debug-adapter/extension/server/com.microsoft.java.debug.plugin-*.jar')
-  if java_debug_path ~= '' then
-    vim.list_extend(bundles, vim.split(java_debug_path, '\n'))
-  end
-end
+-- Locate JAR files for java-debug-adapter
+local path_to_jdtls = home .. '/.local/share/nvim/mason/packages/jdtls'
+local path_to_jdebug = home .. '/.local/share/nvim/mason/packages/java-debug-adapter'
+local path_to_jtest = home .. '/.local/share/nvim/mason/packages/java-test'
 
--- Main configuration
+local bundles = {}
+
+-- java-debug-adapter bundles
+vim.list_extend(bundles, vim.split(vim.fn.glob(path_to_jdebug .. '/extension/server/com.microsoft.java.debug.plugin-*.jar'), '\n'))
+
+-- java-test bundles
+vim.list_extend(bundles, vim.split(vim.fn.glob(path_to_jtest .. '/extension/server/*.jar'), '\n'))
+
+print(vim.inspect(bundles))
+-- Main configuration for JDTLS
 local config = {
   cmd = {
     'java',
@@ -34,16 +40,17 @@ local config = {
     'java.base/java.util=ALL-UNNAMED',
     '--add-opens',
     'java.base/java.lang=ALL-UNNAMED',
-    '-javaagent:' .. home .. '/.local/share/nvim/mason/packages/jdtls/lombok.jar',
+    '-javaagent:' .. path_to_jdtls .. '/lombok.jar',
     '-jar',
-    vim.fn.glob(home .. '/.local/share/nvim/mason/packages/jdtls/plugins/org.eclipse.equinox.launcher_*.jar'),
+    vim.fn.glob(path_to_jdtls .. '/plugins/org.eclipse.equinox.launcher_*.jar'),
     '-configuration',
-    home .. '/.local/share/nvim/mason/packages/jdtls/config_mac_arm',
+    path_to_jdtls .. '/config_mac_arm',
     '-data',
     workspace_dir,
   },
   root_dir = require('jdtls.setup').find_root { '.git', 'mvnw', 'gradlew', 'pom.xml', 'build.gradle' },
 
+  -- Here you can configure eclipse.jdt.ls specific settings
   settings = {
     java = {
       signatureHelp = { enabled = true },
@@ -68,15 +75,28 @@ local config = {
     },
   },
 
+  -- Language server setup
+  capabilities = vim.lsp.protocol.make_client_capabilities(),
+
+  -- Debugging setup
   init_options = {
-    bundles = bundles, -- Include the bundles here
+    bundles = bundles,
   },
 }
 
--- Start the server
+config['on_attach'] = function(client, bufnr)
+  require('jdtls').setup_dap { hotcodereplace = 'auto' }
+
+  local status_ok, jdtls_dap = pcall(require, 'jdtls.dap')
+  if status_ok then
+    jdtls_dap.setup_dap_main_class_configs()
+  end
+end
+
+-- Start the JDTLS server
 require('jdtls').start_or_attach(config)
 
--- Set up keymaps
+-- Set up LSP keymaps
 vim.keymap.set('n', '<leader>co', "<Cmd>lua require'jdtls'.organize_imports()<CR>", { desc = 'Organize Imports' })
 vim.keymap.set('n', '<leader>crv', "<Cmd>lua require('jdtls').extract_variable()<CR>", { desc = 'Extract Variable' })
 vim.keymap.set('v', '<leader>crv', "<Esc><Cmd>lua require('jdtls').extract_variable(true)<CR>", { desc = 'Extract Variable' })
@@ -84,20 +104,25 @@ vim.keymap.set('n', '<leader>crc', "<Cmd>lua require('jdtls').extract_constant()
 vim.keymap.set('v', '<leader>crc', "<Esc><Cmd>lua require('jdtls').extract_constant(true)<CR>", { desc = 'Extract Constant' })
 vim.keymap.set('v', '<leader>crm', "<Esc><Cmd>lua require('jdtls').extract_method(true)<CR>", { desc = 'Extract Method' })
 
--- Set up the DAP configurations
-if jdtls_dap_status then
-  -- Setup main class configs
-  jdtls_dap.setup_dap_main_class_configs()
+-- Setup DAP
+local dap = require 'dap'
 
-  -- Configure DAP for Java
-  local dap = require 'dap'
-  dap.configurations.java = {
-    {
-      type = 'java',
-      request = 'attach',
-      name = 'Debug (Attach) - Remote',
-      hostName = '127.0.0.1',
-      port = 5005,
-    },
-  }
-end
+dap.configurations.java = {
+  {
+    type = 'java',
+    request = 'attach',
+    name = 'Debug (Attach) - Remote',
+    hostName = '127.0.0.1',
+    port = 5005,
+  },
+}
+
+-- Setup the java debugger
+-- require('jdtls').setup_dap { hotcodereplace = 'auto', config_overrides = {} }
+-- require('jdtls.dap').setup_dap_main_class_configs()
+
+-- Debugging keymaps
+vim.keymap.set('n', '<leader>dj', function()
+  require('jdtls.dap').setup_dap_main_class_configs()
+  print 'Java debugger configuration refreshed'
+end, { desc = 'Debug: Refresh Java Config' })
