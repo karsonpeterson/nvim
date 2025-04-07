@@ -24,7 +24,6 @@ vim.list_extend(bundles, vim.split(vim.fn.glob(path_to_jdebug .. '/extension/ser
 -- java-test bundles
 vim.list_extend(bundles, vim.split(vim.fn.glob(path_to_jtest .. '/extension/server/*.jar'), '\n'))
 
-print(vim.inspect(bundles))
 -- Main configuration for JDTLS
 local config = {
   cmd = {
@@ -48,7 +47,7 @@ local config = {
     '-data',
     workspace_dir,
   },
-  root_dir = require('jdtls.setup').find_root { '.git', 'mvnw', 'gradlew', 'pom.xml', 'build.gradle' },
+  root_dir = require('jdtls.setup').find_root { '.git', 'settings.gradle', 'mvnw', 'gradlew', 'pom.xml', 'build.gradle' },
 
   -- Here you can configure eclipse.jdt.ls specific settings
   settings = {
@@ -72,6 +71,25 @@ local config = {
       format = {
         enabled = false,
       },
+      import = {
+        gradle = {
+          enabled = true,
+          wrapper = {
+            enabled = true,
+          },
+        },
+        maven = {
+          enabled = true,
+        },
+        exclusions = {
+          '**/node_modules/**',
+          '**/.metadata/**',
+          '**/archetype-resources/**',
+          '**/META-INF/maven/**',
+          '**/api-specs/**',
+          '**/docs/**',
+        },
+      },
     },
   },
 
@@ -85,7 +103,7 @@ local config = {
 }
 
 config['on_attach'] = function(client, bufnr)
-  require('jdtls').setup_dap { hotcodereplace = 'auto' }
+  require('jdtls').setup_dap { hotcodereplace = 'auto', config_overrides = {} }
 
   local status_ok, jdtls_dap = pcall(require, 'jdtls.dap')
   if status_ok then
@@ -116,10 +134,6 @@ dap.configurations.java = {
     port = 5005,
   },
 }
-
--- Setup the java debugger
--- require('jdtls').setup_dap { hotcodereplace = 'auto', config_overrides = {} }
--- require('jdtls.dap').setup_dap_main_class_configs()
 
 -- Debugging keymaps
 vim.keymap.set('n', '<leader>dj', function()
