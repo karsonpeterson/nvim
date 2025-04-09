@@ -1,20 +1,6 @@
 return {
   { 'mfussenegger/nvim-jdtls' },
   {
-    'windwp/nvim-autopairs',
-    opts = {
-      fast_wrap = {},
-      disable_filetype = { 'TelescopePrompt', 'vim' },
-    },
-    config = function(_, opts)
-      require('nvim-autopairs').setup(opts)
-
-      -- setup cmp for autopairs
-      local cmp_autopairs = require 'nvim-autopairs.completion.cmp'
-      require('cmp').event:on('confirm_done', cmp_autopairs.on_confirm_done())
-    end,
-  },
-  {
     'catppuccin/nvim',
     name = 'catppuccin',
     priority = 1000,
@@ -71,6 +57,62 @@ return {
       dap.listeners.before.event_exited['dapui_config'] = function()
         dapui.close()
       end
+    end,
+  },
+  {
+    'leoluz/nvim-dap-go',
+    ft = 'go',
+    dependencies = 'mfussenegger/nvim-dap',
+    config = function(_, opts)
+      require('dap-go').setup(opts)
+      vim.keymap.set('n', '<leader>dgt', function()
+        require('dap-go').debug_test()
+      end, {})
+      vim.keymap.set('n', '<leader>dgl', function()
+        require('dap-go').debug_last()
+      end, {})
+    end,
+  },
+  {
+    'olexsmir/gopher.nvim',
+    ft = 'go',
+    config = function(_, opts)
+      require('gopher').setup(opts)
+    end,
+    build = function()
+      vim.cmd [[silent! GoInstallDeps]]
+    end,
+  },
+  {
+    'jose-elias-alvarez/null-ls.nvim',
+    ft = 'go',
+    opts = function()
+      local null_ls = require 'null-ls'
+      local augroup = vim.api.nvim_create_augroup('LspFormatting', {})
+
+      local opts = {
+        sources = {
+          null_ls.builtins.formatting.gofumpt,
+          null_ls.builtins.formatting.goimports_reviser,
+          null_ls.builtins.formatting.golines,
+        },
+        on_attach = function(client, bufnr)
+          if client.supports_method 'textDocument/formatting' then
+            vim.api.nvim_clear_autocmds {
+              group = augroup,
+              buffer = bufnr,
+            }
+            vim.api.nvim_create_autocmd('BufWritePre', {
+              group = augroup,
+              buffer = bufnr,
+              callback = function()
+                vim.lsp.buf.format { bufnr = bufnr }
+              end,
+            })
+          end
+        end,
+      }
+      return opts
     end,
   },
   {
