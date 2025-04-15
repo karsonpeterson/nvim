@@ -173,7 +173,13 @@ return {
       local servers = {
         jdtls = {},
         pyright = {},
-        gopls = {},
+        gopls = {
+          completeUnimported = true,
+          usePlaceholders = true,
+          analyses = {
+            unusedparams = true,
+          },
+        },
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
